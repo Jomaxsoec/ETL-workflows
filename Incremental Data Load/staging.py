@@ -16,17 +16,13 @@ from pymysql import Error
 import pymysql.cursors as cursor
 import logging
 
-# -------------------------------------------------------------
 # Configure logging
-# -------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-# -------------------------------------------------------------
 # Connect to the MySQL database
-# -------------------------------------------------------------
 def connect_to_database():
     """
     Establishes a connection to the database
@@ -46,14 +42,20 @@ def connect_to_database():
         logging.error(f"Connection error: {err}")
         return None
 
-
-# -------------------------------------------------------------
 # Insert data from source to staging
-# -------------------------------------------------------------
 def insert_data_to_staging(conn):
     """
     Loads data from the source table to the staging table.
     """
+    try:
+        cursor_temp = conn.cursor()
+        cursor_temp.execute("truncate table stg_jun25;")
+        logging.info("Staging table truncated successfully.")
+        conn.commit()
+    except Exception as e:
+        logging.error(f"Error truncating staging table: {e}")
+        conn.rollback()
+        return
     try:
         cursor_obj = conn.cursor()
         query_str = """
@@ -74,10 +76,7 @@ def insert_data_to_staging(conn):
         logging.error(f"Error inserting data into staging: {e}")
         conn.rollback()
 
-
-# -------------------------------------------------------------
 # Insert data to control table initially
-# -------------------------------------------------------------
 def insert_data_to_control(conn):
     """
     Inserts a new entry into the control table with timestamps.
@@ -102,10 +101,7 @@ def insert_data_to_control(conn):
         logging.error(f"Error inserting data into control table: {e}")
         conn.rollback()
 
-
-# -------------------------------------------------------------
 # Update control table after staging load
-# -------------------------------------------------------------
 def update_control_table_stg(conn):
     """
     Updates the control table's max dates based on the staging data,
@@ -152,10 +148,7 @@ def update_control_table_stg(conn):
         logging.error(f"Error updating control table after staging: {e}")
         conn.rollback()
 
-
-# -------------------------------------------------------------
 # Insert new data into staging after source update
-# -------------------------------------------------------------
 def insert_into_stg(conn):
     """
     Loads new or changed records from the source to staging
@@ -186,10 +179,7 @@ def insert_into_stg(conn):
         logging.error(f"Error inserting new data into staging: {e}")
         conn.rollback()
 
-
-# -------------------------------------------------------------
 # Push data from staging to target with upsert logic
-# -------------------------------------------------------------
 def push_to_target_table(conn):
     """
     Inserts or updates data from staging to target using
@@ -219,10 +209,7 @@ def push_to_target_table(conn):
         logging.error(f"Error pushing data to target table: {e}")
         conn.rollback()
 
-
-# -------------------------------------------------------------
 # Final update of control table after pushing to target
-# -------------------------------------------------------------
 def update_control_table_tgt(conn):
     """
     Updates the control table based on the target table’s
